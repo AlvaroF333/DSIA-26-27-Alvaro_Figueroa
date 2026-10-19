@@ -23,9 +23,9 @@ Practicar el **mismo borde** en dos pasos:
 | A3 secretos + mock | Partes 3–5 |
 | B7 batch / retries | Partes 4–5 |
 | B8 citación | Parte 6 |
-| B4.3 componer HTTP + LLM | Parte 7 |
+| B4.3 / B6 componer HTTP + LLM / Hugging Face | Parte 7 |
 
-Trabaja **sin claves** (HTTP abierto + `mock`). Si tienes cuota, la demo real es opcional y no sustituye al mock.
+Trabaja el núcleo **sin claves** (HTTP abierto + `mock`). La demo real recomendada es **Hugging Face** (`HF_TOKEN`); no sustituye al mock en CI.
 
 ---
 
@@ -145,16 +145,19 @@ Conecta con la Parte 2: el `--fail-once` simula un fallo **transitorio** (como u
 
 Crea o actualiza `AI_USAGE.md` (junto al ejemplo o en tu repo de práctica) con:
 
-- Proveedor usado (`mock`; y, si aplica, uno real)
+- Proveedor usado (`mock`; y, si aplica, **`hf`** u otro real)
+- Si usaste Hugging Face: **tarea** (chat, classification, …) + modelo (`owner/name`)
 - Si un asistente escribió parte del código: herramienta + qué aceptaste / qué cambiaste
-- Comandos de evidencia (HTTP abierto + batch + retry)
+- Comandos de evidencia (HTTP abierto + batch + retry [+ hf])
 
 Plantilla mínima:
 
 ```text
 # AI usage
 
-- Provider: mock
+- Provider: mock | hf
+- Tarea HF (si hf): chat | text-classification | …
+- Modelo Hub (si hf): mistralai/Mistral-7B-Instruct-v0.3
 - Asistente: <ninguno | Cursor / ChatGPT / …>
 - Qué aportó: …
 - Qué acepté / revisé: …
@@ -163,13 +166,15 @@ Plantilla mínima:
   python open_api_client.py weather --lat 40.4168 --lon -3.7038
   python ai_api_client.py --provider mock --batch prompts.txt --output respuestas.jsonl
   python ai_api_client.py --provider mock --prompt "test" --fail-once
+  # opcional:
+  python ai_api_client.py --provider hf --prompt "Resume SOLID en 3 viñetas"
 ```
 
 ---
 
 ## Parte 7 — Extensión (deseable, ~10 min)
 
-Elige **una**:
+Elige **una** (7.3 es la más útil de cara al Proyecto II):
 
 ### 7.1 Componer HTTP + LLM (idea)
 
@@ -177,7 +182,7 @@ Escribe un script corto o función que:
 
 1. llame a `weather_forecast` (o al CLI weather),  
 2. arme un prompt con temperatura/viento,  
-3. pase ese prompt a `complete("mock", ...)`.
+3. pase ese prompt a `complete("mock", ...)` (o `"hf"` si tienes token).
 
 Mantén **dos bordes** (no mezcles `requests` + prompt en la misma función de negocio).
 
@@ -185,15 +190,36 @@ Mantén **dos bordes** (no mezcles `requests` + prompt en la misma función de n
 
 Añade un test mínimo del `complete("mock", ...)` (assert de `provider` y prefijo `[mock]`). No pegues HTTP real en CI.
 
-### 7.3 Demo real (solo si hay clave)
+### 7.3 Hugging Face — un modelo del Hub (recomendado; no solo LLM)
+
+HF sirve **cualquier tarea** del Hub (chat, clasificación, NER, embeddings, visión…). El CLI del curso usa chat por simplicidad; en el proyecto puedes envolver otra.
+
+1. Cuenta + token: [huggingface.co/settings/tokens](https://huggingface.co/settings/tokens).  
+2. En la **raíz del repo**:
 
 ```bash
-cp ../../.env.example ../../.env   # raíz del repo, si aún no existe
-# Rellena OPENAI_API_KEY (u otra)
-python ai_api_client.py --provider openai --prompt "Resume SOLID en 3 viñetas"
+cp .env.example .env
+# HF_TOKEN=hf_...
+pip install huggingface_hub
 ```
 
-Documenta en `AI_USAGE.md` el proveedor real. El E5 **sigue** validándose en `mock`.
+3. Smoke chat (guía B6.3):
+
+```bash
+cd 3_automatizacion_e_ia/ejemplos
+python ai_api_client.py --provider hf --prompt "Resume SOLID en 3 viñetas"
+python ai_api_client.py --provider hf \
+  --model mistralai/Mistral-7B-Instruct-v0.3 \
+  --prompt "Explica idempotencia en una frase"
+```
+
+4. (Opcional) Prueba **otra tarea** en unas líneas (B6.4), p. ej. `text_classification` con un modelo de sentimiento del Hub. Anota tarea + id.
+
+5. En `AI_USAGE.md`: proveedor `hf`, **tarea**, **modelo** (`owner/name`) y comando.
+
+Si el modelo no está disponible en Inference, prueba otro id. OpenAI/Anthropic valen para chat; el abanico de tasks es ventaja de HF.
+
+El E5 **sigue** validándose en `mock` (batch + retry). HF es evidencia de borde real.
 
 ---
 
@@ -206,3 +232,5 @@ Documenta en `AI_USAGE.md` el proveedor real. El E5 **sigue** validándose en `m
 - [ ] El retry con `--fail-once` recupera y no cae a la primera  
 - [ ] Existe `AI_USAGE.md` con proveedor + citación + comandos  
 - [ ] Entiendes por qué el modo `mock` (y el mock HTTP) es obligatorio en CI / desarrollo offline  
+- [ ] (Deseable) Smoke HF con **tarea + modelo** del Hub documentados  
+

@@ -1,11 +1,14 @@
 """
 Cliente unificado para servicios de IA.
 
-Uso (requiere API keys en .env):
-    python ai_api_client.py --provider openai --prompt "Resume SOLID en 3 viñetas"
+Uso:
     python ai_api_client.py --provider mock --prompt "Hola"
+    python ai_api_client.py --provider hf --prompt "Resume SOLID en 3 viñetas"
+    python ai_api_client.py --provider hf --model mistralai/Mistral-7B-Instruct-v0.3 --prompt "..."
 
-Nota pedagógica: el modo `mock` permite practicar sin claves.
+Proveedor real recomendado: Hugging Face (`HF_TOKEN`). Este demo usa chat/LLM;
+en el Proyecto II puedes envolver otras tareas del Hub (clasificación, embeddings…).
+OpenAI / Anthropic son opcionales. El modo `mock` permite practicar sin claves.
 """
 
 from __future__ import annotations
@@ -76,9 +79,16 @@ def complete(provider: str, prompt: str, model: str | None = None) -> AIResponse
             from huggingface_hub import InferenceClient
         except ImportError as exc:
             raise AIClientError("Instala: pip install huggingface_hub") from exc
-        client = InferenceClient(token=token)
+        # Inference Providers: token de usuario + modelo del Hub (id owner/name).
+        # Docs: https://huggingface.co/docs/huggingface_hub/guides/inference
+        client = InferenceClient(api_key=token, provider="auto")
         chosen = model or "mistralai/Mistral-7B-Instruct-v0.3"
-        text = client.text_generation(prompt, model=chosen, max_new_tokens=256)
+        result = client.chat_completion(
+            messages=[{"role": "user", "content": prompt}],
+            model=chosen,
+            max_tokens=256,
+        )
+        text = result.choices[0].message.content or ""
         return AIResponse(provider="huggingface", text=text)
 
     raise AIClientError(f"Proveedor no soportado: {provider}")

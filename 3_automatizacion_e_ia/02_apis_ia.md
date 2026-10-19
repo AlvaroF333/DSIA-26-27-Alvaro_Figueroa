@@ -8,7 +8,7 @@
 | Variables de entorno (ejemplo) | [`.env.example`](../.env.example) |
 | Base previa (data flows) | [`01_data_flows.md`](01_data_flows.md) |
 
-Este documento es la **referencia amplia** de la sesión de APIs en DSIA. El orden pedagógico es deliberado:
+Este documento es la **referencia amplia** de la sesión de APIs en DSIA:
 
 1. primero un **borde HTTP con APIs abiertas** (meteo, país, festivos, FX…): ves JSON, timeouts y status codes sin pagar ni registrar clave;
 2. después **transferimos el mismo patrón** a un cliente multi-proveedor de **LLM** (`complete` + `AIResponse` + secretos + `mock`).
@@ -30,7 +30,7 @@ Al terminar la sesión **debes** ser capaz de:
 ### Deseables (material suplementario)
 
 4. Lanzar varias demos de `open_api_client.py` (meteo, país, festivos, FX…).
-5. Lanzar el demo IA con `openai` / `anthropic` / `hf` si hay claves (opcional en aula).
+5. Lanzar el demo IA con **`hf` (Hugging Face)** u otro proveedor si hay token/clave (opcional en aula).
 6. Extender el CLI IA con batch JSONL + retries ([`E5`](ejercicios/E5_apis_ia.md)).
 7. Documentar uso de IA en `AI_USAGE.md` y encajar cualquier API como **borde** del pipeline.
 
@@ -77,7 +77,7 @@ El data flow de la sesión anterior es el **centro**. Cualquier API (abierta o L
 | Cliente unificado | Mandos universales: mismo botón, distintas TVs |
 | `APIResult` / `AIResponse` | Ticket estándar (da igual el mostrador) |
 | API abierta (meteo…) | Mostrador público; a menudo sin llave |
-| Proveedor LLM (`openai` / …) | Mostrador de pago; llave en la caja fuerte |
+| Proveedor LLM (`hf` / `openai` / …) | Mostrador (HF con créditos free; OpenAI de pago) |
 | Modo `mock` | Simulador de vuelo: practicas sin avión real |
 | `.env` | Caja fuerte; el código solo pide la llave |
 | Retry / backoff | Llamar otra vez si la línea está saturada |
@@ -238,7 +238,7 @@ cp .env.example .env
 | --- | --- |
 | `OPENAI_API_KEY` | proveedor `openai` |
 | `ANTHROPIC_API_KEY` | proveedor `anthropic` |
-| `HF_TOKEN` | proveedor `hf` |
+| `HF_TOKEN` | proveedor `hf` (token de https://huggingface.co/settings/tokens) |
 | `GITHUB_TOKEN` | opcional en `open_api_client` (sube rate limit) |
 | `LOG_LEVEL` | logging (opcional) |
 
@@ -440,9 +440,11 @@ Proveedores en el demo:
 | `--provider` | SDK / nota | Variable |
 | --- | --- | --- |
 | `mock` | sin red | ninguna |
+| `hf` | `huggingface_hub.InferenceClient` (**recomendado** en DSIA) | `HF_TOKEN` |
 | `openai` | `openai.OpenAI` | `OPENAI_API_KEY` |
 | `anthropic` | `anthropic.Anthropic` | `ANTHROPIC_API_KEY` |
-| `hf` | `huggingface_hub.InferenceClient` | `HF_TOKEN` |
+
+> En el curso prioriza **Hugging Face** como proveedor real: cuenta gratuita, token gratis, Inference Providers, y eliges **cualquier modelo del Hub** (LLM u otra tarea) por su id. El demo CLI usa chat; el proyecto puede usar clasificación, embeddings, visión, etc. OpenAI/Anthropic son alternativas sobre todo para texto generativo.
 
 ### B4.2 Cómo se relacionan con los 3 conceptos
 
@@ -456,7 +458,7 @@ Proveedores en el demo:
 ### B4.3 Componer API abierta + LLM (idea, no obligatorio)
 
 ```text
-Open-Meteo (datos)  →  resumen estructurado  →  complete(mock|openai)  →  texto para el usuario
+Open-Meteo (datos)  →  resumen estructurado  →  complete(mock|hf)  →  texto para el usuario
         ↑ borde datos                              ↑ borde IA
 ```
 
@@ -466,7 +468,7 @@ Mantén **dos clientes** (o dos módulos): uno HTTP de datos, otro de LLM. No me
 
 1. Capas B1 + lanzar `open_api_client.py weather` y señalar `APIResult` (A1, 8 min).  
 2. Tabla 401/404/429/5xx + `timeout` sobre el mismo cliente (A2, 8 min).  
-3. Puente: “mismo patrón, ahora LLM” → demo `mock` + `.env.example` (A3, 10 min).  
+3. Puente: “mismo patrón, ahora LLM” → demo `mock` + `.env.example` + mención HF (A3, 10 min).  
 4. Adelanto E5: batch JSONL + `--fail-once` (5–8 min).
 
 ---
@@ -482,48 +484,135 @@ proyecto/
   pipeline/              # load / transform / save
   integrations/
     open_data_client.py  # meteo / países / FX / …
-    ai_client.py         # complete + AIResponse
+    ai_client.py         # complete + AIResponse (mock | hf | …)
     prompts.py           # plantillas (opcional)
   tests/
     test_open_data_client.py # mock HTTP
     test_ai_client.py        # mock
-.env.example
+.env.example             # incluye HF_TOKEN=
 AI_USAGE.md
 ```
 
 ### Reglas prácticas
 
 1. Un solo sitio conoce SDKs / URLs de cada vendor.  
-2. El resto importa el cliente (`weather_forecast`, `complete`, …), no `OpenAI(...)` ni URLs sueltas.  
+2. El resto importa el cliente (`weather_forecast`, `complete`, …), no `InferenceClient(...)` / `OpenAI(...)` sueltos.  
 3. Tests de bordes: **mock** (sin red en CI).  
-4. Prompts y queries versionados; no literales mágicos repartidos.
+4. Prompts y queries versionados; no literales mágicos repartidos.  
+5. Documenta el **modelo del Hub** (`owner/name`) que usas con HF.
 
 ---
 
-## B6. Demo con claves reales de LLM (opcional en aula)
+## B6. Hugging Face: usar modelos del Hub (no solo LLM)
 
-Solo si hay cuota y el profesor lo indica:
+En DSIA, **Hugging Face es el proveedor real recomendado** para el borde de modelos vía API (sesión, E5 extensión y Proyecto II).
+
+**Importante:** el Hub no es “solo chat/LLM”. Aloja (y sirve por Inference) modelos de **muchas tareas**: LLM/chat, clasificación de texto, NER, embeddings, traducción, speech-to-text, visión, etc. Eliges el modelo por su ficha en el Hub y el método de `InferenceClient` que corresponda a esa tarea.
+
+| Pieza | Qué es | En el curso |
+| --- | --- | --- |
+| **Modelo sklearn** | Clásico, **entrenado por ti** sobre tus datos; local | `train` + `joblib` + inferencia en el pipeline |
+| **Modelo en el Hub (HF)** | Preentrenado (o publicado) **de terceros**; vía API | `InferenceClient` + `HF_TOKEN` + id `owner/name` |
+
+No sustituyen lo mismo: sklearn es *tu* modelo de negocio; HF es un **servicio externo** de modelos (**de cualquier tipo** que elijas).
+
+### B6.1 Cuenta, token y dependencia
+
+1. Crea cuenta en [huggingface.co](https://huggingface.co/).  
+2. Token: [Settings → Access Tokens](https://huggingface.co/settings/tokens) (permiso de lectura basta para Inference).  
+3. En la raíz del repo:
 
 ```bash
-cp .env.example .env   # raíz del repo
-# Rellena OPENAI_API_KEY / ANTHROPIC_API_KEY / HF_TOKEN
-
-cd 3_automatizacion_e_ia/ejemplos
-python ai_api_client.py --provider openai --prompt "Resume SOLID en 3 viñetas"
-python ai_api_client.py --provider anthropic --prompt "..."
-python ai_api_client.py --provider hf --prompt "..."
+cp .env.example .env
+# HF_TOKEN=hf_...
+pip install huggingface_hub   # o añádelo a requirements.txt
 ```
 
-Si falta la clave o el SDK:
+Docs oficiales: [Inference guide](https://huggingface.co/docs/huggingface_hub/guides/inference) · [Inference Providers](https://huggingface.co/docs/inference-providers) · [Tasks](https://huggingface.co/tasks).
+
+### B6.2 Tareas ≠ solo chat
+
+`InferenceClient` expone un método por familia de tarea. Ejemplos (orientativos):
+
+| Tarea | Método (idea) | Ejemplo de uso en un producto DSIA |
+| --- | --- | --- |
+| Chat / LLM | `chat_completion` | Explicar predicciones, resumir informe |
+| Text generation | `text_generation` | Completar plantillas |
+| Clasificación de texto | `text_classification` | Sentimiento, toxicidad, etiquetas |
+| Token classification | `token_classification` | NER (personas, orgs…) |
+| Feature extraction | `feature_extraction` | Embeddings para búsqueda / clustering |
+| Translation | `translation` | ES ↔ EN en el pipeline |
+| ASR | `automatic_speech_recognition` | Audio → texto |
+| Vision | `image_classification` / `object_detection` / … | Etiquetar imágenes del dominio |
+
+En el **demo de aula** (`ai_api_client.py --provider hf`) usamos **chat** porque es el camino más simple para practicar `complete` + `AIResponse`. En el **Proyecto II** puedes (y a menudo debes) envolver **otra tarea** del Hub con el mismo criterio de borde: cliente tipado, mock en CI, modelo documentado.
+
+### B6.3 Demo de aula (chat / LLM)
+
+```python
+from huggingface_hub import InferenceClient
+
+client = InferenceClient(api_key=os.environ["HF_TOKEN"], provider="auto")
+result = client.chat_completion(
+    messages=[{"role": "user", "content": prompt}],
+    model="mistralai/Mistral-7B-Instruct-v0.3",  # id del Hub
+    max_tokens=256,
+)
+text = result.choices[0].message.content
+```
+
+```bash
+cd 3_automatizacion_e_ia/ejemplos
+python ai_api_client.py --provider hf --prompt "Resume SOLID en 3 viñetas"
+python ai_api_client.py --provider hf --model mistralai/Mistral-7B-Instruct-v0.3 \
+  --prompt "Explica idempotencia en una frase"
+```
+
+Contrato del demo: `AIResponse(provider="huggingface", text=...)`. Si en el proyecto usas otra tarea, define un contrato propio (`APIResult` / dataclass) — misma idea A1.
+
+### B6.4 Ejemplo mínimo de otra tarea (clasificación)
+
+```python
+from huggingface_hub import InferenceClient
+
+client = InferenceClient(api_key=os.environ["HF_TOKEN"], provider="auto")
+# Elige un modelo de text-classification en el Hub; documenta el id.
+labels = client.text_classification(
+    "El servicio fue excelente y rápido",
+    model="distilbert/distilbert-base-uncased-finetuned-sst-2-english",
+)
+# → lista de {label, score}; normalízala en tu cliente de borde
+```
+
+### B6.5 Elegir modelo
+
+- Id = `organizacion/nombre` en el Hub.  
+- Filtra por **task** en [huggingface.co/tasks](https://huggingface.co/tasks) o en la ficha del modelo.  
+- Comprueba que tenga Inference / Providers activos; si falla, cambia de modelo.  
+- Documenta en README / `AI_USAGE.md`: **tarea + modelo + por qué** (no solo “usé HF”).
+
+### B6.6 Cuota, errores y buenas prácticas
+
+- Cuentas free suelen tener **créditos mensuales** limitados: smoke, no CI.  
+- 401 → no reintentar; 429 → backoff; en clase vuelve a `mock`.  
+- En CI/tests: **siempre mock** (o fixture) del borde HF.  
+- No subas `HF_TOKEN` al repo.
+
+### B6.7 Otros proveedores (opcional, sobre todo LLM)
+
+OpenAI/Anthropic cubren sobre todo chat/completions. Siguen siendo válidos para texto generativo; **no** sustituyen el abanico de tareas del Hub.
+
+```bash
+python ai_api_client.py --provider openai --prompt "..."
+python ai_api_client.py --provider anthropic --prompt "..."
+```
 
 ```text
-AIClientError: Falta OPENAI_API_KEY en el entorno
-AIClientError: Instala el SDK: pip install openai
+AIClientError: Falta HF_TOKEN en el entorno
+AIClientError: Instala: pip install huggingface_hub
 ```
 
 Eso es **deseable**: fallar explícito > traza opaca.
-
----
 
 ## B7. Batch JSONL y retries (puente al E5)
 
@@ -729,7 +818,11 @@ python open_api_client.py fx --base EUR --symbols USD
 # 2) Cliente IA (mock)
 python ai_api_client.py --provider mock --prompt "Di hola en una frase"
 
-# 3) Tras E5
+# 3) Hugging Face (requiere HF_TOKEN en .env)
+python ai_api_client.py --provider hf --prompt "Resume SOLID en 3 viñetas"
+python ai_api_client.py --provider hf --model mistralai/Mistral-7B-Instruct-v0.3 --prompt "..."
+
+# 4) Tras E5
 python ai_api_client.py --provider mock --batch prompts.txt --output respuestas.jsonl
 python ai_api_client.py --provider mock --prompt "test" --fail-once
 ```
@@ -768,16 +861,25 @@ assert resp.text.startswith("[mock]")
 Porque el borde HTTP se ve mejor sin SDK ni cuota. Luego el LLM reutiliza el mismo diseño.
 
 **¿Obligatorio pagar OpenAI?**  
-No para la sesión ni el E5: el modo `mock` basta. Las claves reales son opcionales.
+No. El modo `mock` basta para E5. Como proveedor real, prioriza **Hugging Face** (`HF_TOKEN` gratis + créditos Inference). OpenAI/Anthropic son opcionales.
+
+**¿Cómo obtengo `HF_TOKEN`?**  
+Cuenta en huggingface.co → Settings → Access Tokens → pega el valor en `.env` (nunca en Git).
 
 **¿Puedo usar solo un proveedor en el Proyecto II?**  
-Sí, pero deja el **cliente unificado** + mock para tests/CI. O un buen cliente HTTP abierto.
+Sí: recomendado `mock` + **`hf`**. Deja el cliente unificado; en CI solo mock.
 
 **¿Dónde pongo la clave en GitHub Actions?**  
-Settings → Secrets. Para el gate básico del curso, **mock** evita el secreto.
+Settings → Secrets (`HF_TOKEN` si hay smoke real). Para el gate básico del curso, **mock** evita el secreto.
 
-**¿Qué modelo uso?**  
-Los defaults del demo (`gpt-4o-mini`, Claude Sonnet, Mistral en HF) son punto de partida; puedes pasar `--model`.
+**¿Qué modelo uso en Hugging Face?**  
+El que encaje con tu **tarea** (chat, clasificación, embeddings, visión…). En el demo de aula el default es un LLM instruct; en el Proyecto II elige cualquier modelo del Hub con Inference y documenta tarea + id.
+
+**sklearn vs Hugging Face — ¿son lo mismo?**  
+No. sklearn = *tu* modelo clásico local (entrenas con tus datos). HF = modelos del Hub vía API (**LLM u otras tareas**). El Proyecto II pide sklearn **y** un borde HF (u otro proveedor API) bien hecho.
+
+**¿HF solo vale para LLM?**  
+No. El Hub cubre muchas tasks; el demo usa chat por simplicidad. Ver B6.2.
 
 **¿Por qué `AIClientError` / `OpenAPIError` y no `Exception` genérica?**  
 Para que los tests y el CLI puedan distinguir fallos del borde.
@@ -799,7 +901,8 @@ No para el uso básico de aula. Lee siempre la licencia y los límites de la API
 | --- | --- | --- | --- |
 | Conceptos clave | SDK / `requests` sueltos | Cliente + contrato (`APIResult` o `AIResponse`) | + errores tipados + mock/secretos |
 | HTTP abierto | URL pegada en notebook | `open_api_client` o equivalente | + tests mock HTTP |
-| Secretos | Clave en código | `.env` + `.env.example` | + mock en CI |
+| Borde HF / IA | Solo notebook ChatGPT | `complete`/`InferenceClient` + `mock` | + tarea + modelo Hub documentados |
+| Secretos | Clave en código | `.env` + `.env.example` (`HF_TOKEN`) | + mock en CI |
 | Errores | Silenciados / siempre retry | Tabla 401/429/5xx + timeout | + retries con criterio (E5) |
 | Proyecto II | API dentro de `transform` | Borde separado | + `AI_USAGE.md` + tests mock |
 
