@@ -1,0 +1,6 @@
+# Datos completos y artefactos generados (la muestra de data/sample sí se versiona)
+data/raw/
+data/processed/
+cache/
+reports/*
+!reports/.gitkeep
