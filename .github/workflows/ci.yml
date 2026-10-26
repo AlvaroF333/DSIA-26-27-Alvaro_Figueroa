@@ -21,5 +21,5 @@ jobs:
         working-directory: 2_pruebas_y_despliegue/ejemplos
         run: pytest -q
       - name: API template tests (tema 5)
-        working-directory: 5_desarrollo_end_to_end/plantilla_proyecto
+        working-directory: 4_desarrollo_end_to_end/plantilla_proyecto
         run: pytest -q
