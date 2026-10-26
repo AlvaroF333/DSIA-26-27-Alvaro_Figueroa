@@ -5,7 +5,7 @@
 
 ## Parte 1 — Levantar plantilla (8 min)
 
-1. Copia `plantilla_proyecto` a tu repo de Proyecto III.
+1. Copia `plantilla_proyecto` a tu repo de Proyecto II.
 2. Ejecuta `ingest.py` sobre `ventas.csv`.
 3. Arranca `app.py` y prueba `/health` + `/analyze` con curl.
 
