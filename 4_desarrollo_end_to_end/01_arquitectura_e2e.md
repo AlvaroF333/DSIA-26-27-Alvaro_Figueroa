@@ -6,7 +6,7 @@
 | Ejercicio de clase | [`ejercicios/E8_e2e_arquitectura.md`](ejercicios/E8_e2e.md) |
 | Datos | [`../3_automatizacion_e_ia/Datos/ventas.csv`](../3_automatizacion_e_ia/Datos/ventas.csv) (~140 válidas / 10 inválidas) |
 | Base previa | [`../3_automatizacion_e_ia/`](../3_automatizacion_e_ia/) (sesión 5: job CLI + exit codes + metrics + bash/cron) |
-| Enunciado | [`proyectos/proyecto_iii/`](proyectos/proyecto_iii/) |
+| Enunciado | [`proyectos/proyecto_ii/`](proyectos/proyecto_ii/) |
  
 ## Historia de la sesión (léela primero)
  
